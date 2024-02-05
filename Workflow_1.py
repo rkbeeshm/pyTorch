@@ -177,7 +177,12 @@ optimizer = torch.optim.SGD(params=model_0.parameters(),
 
 # An epoch is one loop through the data
 
-epochs = 10
+epochs = 100
+
+# Track different values
+epoch_count = []
+loss_values = []
+test_loss_values = []
 
 for epochs in range (epochs):
     # set  the model to training mode
@@ -198,10 +203,72 @@ for epochs in range (epochs):
     # 5. step the optimizer 
     optimizer.step()
 
-    # Testing
-    model_0.eval()
+    ### Testing
+    model_0.eval() # turns off different setting in the model not needed for evaluation
+    with torch.inference_mode():
+        
+        # 1. do the forward pass
+        test_pred = model_0(X_test)
 
-    print(model_0.state_dict())
+        # 2. Calculate the loss
+        test_loss = loss_fn(test_pred, y_test)
+    if epochs % 10  == 0:
 
-with torch.inference_mode():
-    y_preds_new = model_0(X_train)
+        epoch_count.append(epochs)
+        loss_values.append(loss)
+        test_loss_values.append(test_loss)
+
+        #print(f"Epoch: {epochs} | Test: {loss} | Test loss: {test_loss}")
+        #print(model_0.state_dict())
+
+# plot_prediction(predicitions=test_pred)
+# plt.show()
+
+import numpy as np
+
+# if you have list not a regular 0 d tensor than use below to convert it to numpy
+tensor = torch.tensor(loss_values).cpu().numpy()
+print(tensor)
+
+##
+## Loss Curve
+##
+plt.plot(epoch_count, np.array(torch.tensor(loss_values).cpu().numpy()), label="Train loss")
+plt.plot(epoch_count, np.array(torch.tensor(test_loss_values).cpu().numpy()), label="Trest loss")
+plt.show()
+
+
+##
+## Saving a model
+##
+
+# Three methos to save mode;
+# torch.save() - allows you to save a PyTorch object in python;s pickle format
+# torch.load() - allows you to load a saveed PyTorch object
+# torch,nn,Module.load_state_dict() - this allows to load a model's saved state dict
+
+from pathlib import Path
+
+# 1. create directory
+MODEL_PATH = Path("models")
+MODEL_PATH.mkdir(parents=True, exist_ok=True)
+
+# 2. create model save path
+MODEL_NAME = "Workflow_0_model.pth"
+MODEL_SAVE_PATH = MODEL_PATH/MODEL_NAME
+
+# 3. save the model state dict
+
+torch.save(obj=model_0.state_dict(), f=MODEL_SAVE_PATH)
+
+## Loading a PyTorch model
+# Since we saved our model's "State_dict()" rather the entire model, we'll create a new instance 
+# of our model class and load the saved "state_dict()" into that
+
+##
+## To load in a saved state_dict we have to instantiate a new instance of our
+## model class
+##
+
+loaded_model_0 = LinearRegressionModel()
+loaded_model_0.load_state_dict(torch.load(f=MODEL_SAVE_PATH))
